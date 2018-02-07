@@ -28,11 +28,11 @@
 (handlers/register-handler-fx
   :profile/send-transaction
   [re-frame/trim-v]
-  (fn [{{:contacts/keys [contacts] :as db} :db :as cofx} [chat-id]]
+  (fn [{{:contacts/keys [contacts]} :db :as cofx} [chat-id]]
     (let [send-command (get-in contacts chat-const/send-command-ref)]
-      (-> (chat-events/navigate-to-chat cofx chat-id)
-          (as-> fx
-              (merge fx (input-events/select-chat-input-command (:db fx) send-command nil true)))))))
+      (handlers/merge-fx cofx
+                         (chat-events/navigate-to-chat chat-id)
+                         (input-events/select-chat-input-command send-command nil true)))))
 
 (defn get-current-account [{:keys [:accounts/current-account-id] :as db}]
   (get-in db [:accounts/accounts current-account-id]))
