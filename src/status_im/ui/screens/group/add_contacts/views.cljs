@@ -71,7 +71,7 @@
      [toggle-list contacts group-toggle-contact]]))
 
 (defn toggle-participants-handler []
-  (re-frame/dispatch [:add-new-group-chat-participants])
+  (re-frame/dispatch [:add-group-chat-participants])
   (re-frame/dispatch [:navigate-back]))
 
 (defn add-participants-toggle-list-toolbar [selected-contacts-count]
@@ -92,7 +92,7 @@
      [status-bar]
      [toggle-list-toolbar {:count   selected-contacts-count
                            :handler #(do
-                                       (re-frame/dispatch [:add-new-group-chat-participants])
+                                       (re-frame/dispatch [:add-group-chat-participants])
                                        (re-frame/dispatch [:navigate-back]))
                            :label   (i18n/label :t/add)}
       chat-name]
