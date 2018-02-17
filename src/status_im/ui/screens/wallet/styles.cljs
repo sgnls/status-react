@@ -57,14 +57,22 @@
    :padding-vertical   15})
 
 (def cartouche-primary-text
-  {:color styles/color-white})
+  {:color colors/white})
 
 (def cartouche-secondary-text
-  {:color styles/color-white-transparent})
+  {:color colors/white-transparent})
 
 ;; Main section
 
 (def main-section
+  {:flex             1
+   :background-color colors/blue})
+
+(def scrollable-section
+  {:flex             1
+   :background-color colors/white})
+
+(def section
   {:background-color colors/blue})
 
 (def total-balance-container
@@ -80,12 +88,12 @@
 
 (def total-value
   {:font-size 14
-   :color     styles/color-white-transparent})
+   :color     colors/white-transparent})
 
 (defstyle total-balance-currency
   {:font-size   37
    :margin-left 9
-   :color       styles/color-white-transparent-5
+   :color       colors/white-lighter-transparent
    :android     {:letter-spacing 1.5}
    :ios         {:letter-spacing 1.16}})
 
@@ -112,12 +120,13 @@
 
 (def asset-section
   {:flex             1
-   :padding-vertical 16})
+   :padding-top      16
+   :background-color colors/white})
 
 (def asset-section-title
   {:font-size   14
    :margin-left 16
-   :color       styles/color-gray4})
+   :color       colors/gray})
 
 (def asset-item-value-container
   {:flex           1
@@ -127,15 +136,9 @@
 (def asset-item-value
   {:flex      -1
    :font-size 16
-   :color     styles/color-black})
+   :color     colors/black})
 
 (def asset-item-currency
   {:font-size   16
-   :color       styles/color-gray4
+   :color       colors/gray
    :margin-left 6})
-
-(def qr-code-preview
-  {:width           256
-   :height          256
-   :justify-content :center
-   :align-items     :center})

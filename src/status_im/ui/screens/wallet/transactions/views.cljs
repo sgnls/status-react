@@ -101,7 +101,6 @@
 
 (defview history-list []
   (letsubs [transactions-history-list [:wallet.transactions/transactions-history-list]
-            transactions-loading?     [:wallet.transactions/transactions-loading?]
             filter-data               [:wallet.transactions/filters]]
     [react/view components.styles/flex
      [list/section-list {:sections        (map #(update-transactions % filter-data) transactions-history-list)
@@ -109,7 +108,7 @@
                          :empty-component [react/text {:style styles/empty-text}
                                            (i18n/label :t/transactions-history-empty)]
                          :on-refresh      #(re-frame/dispatch [:update-transactions])
-                         :refreshing      (boolean transactions-loading?)}]]))
+                         :refreshing      false}]]))
 
 (defview unsigned-list []
   (letsubs [transactions [:wallet.transactions/unsigned-transactions-list]]
@@ -189,7 +188,7 @@
 (defview transactions []
   (letsubs [current-tab                 [:get :view-id]
             filter-data                 [:wallet.transactions/filters]]
-    [react/view styles/transacions-view
+    [react/view styles/transactions-view
      [status-bar/status-bar]
      [toolbar-view current-tab filter-data]
      [tabs current-tab]
@@ -203,7 +202,6 @@
     ;; TODO (jeluard) Format tokens amount once tokens history is supported
     :ETH (if amount (money/wei->str :eth amount) "...")
     (throw (str "Unknown asset symbol: " symbol))))
-
 
 (defn details-header [{:keys [value date type symbol]}]
   [react/view {:style styles/details-header}
