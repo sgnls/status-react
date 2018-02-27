@@ -45,7 +45,8 @@
              :inbox/wnodes               constants/default-wnodes
              :inbox/topic                constants/inbox-topic
              :inbox/password             constants/inbox-password
-             :my-profile/editing?        false})
+             :my-profile/editing?        false
+             :app-state/state            :active})
 
 ;;;;GLOBAL
 
@@ -159,11 +160,17 @@
                   :inbox/wnode
                   :inbox/wnodes
                   :inbox/topic
+                  :inbox/from
+                  :inbox/to
                   :inbox/password
+                  :app-state/state
+                  :app-state/active-timestamp
+                  :app-state/background-timestamp
                   :browser/browsers
                   :browser/options
                   :new/open-dapp
-                  :navigation/screen-params]
+                  :navigation/screen-params
+                  :network-status/offline-timestamp]
                  :opt-un
                  [::current-public-key
                   ::modal

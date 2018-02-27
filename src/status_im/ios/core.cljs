@@ -19,6 +19,9 @@
 (defn orientation->keyword [o]
   (keyword (.toLowerCase o)))
 
+(defn app-state-change-handler [state]
+  (dispatch [:app-state-change state]))
+
 (defn app-root []
   (let [keyboard-height (subscribe [:get :keyboard-height])]
     (reagent/create-class
@@ -41,7 +44,8 @@
                        "keyboardWillHide"
                        #(when-not (= 0 @keyboard-height)
                           (dispatch [:set :keyboard-height 0])))
-         (.hide react/splash-screen))
+         (.hide react/splash-screen)
+         (.addEventListener react/app-state "change" app-state-change-handler))
        :component-did-mount
        (fn []
          (notifications/request-permissions)
