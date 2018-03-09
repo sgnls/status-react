@@ -157,7 +157,7 @@
 (defn commands-button []
   [react/touchable-highlight
    {:on-press #(do (re-frame/dispatch [:set-chat-input-text constants/command-char])
-                   (react/dismiss-keyboard!))}
+                   (re-frame/dispatch [:chat-input-focus :input-ref]))}
    [react/view
     [vi/icon :icons/input-commands {:container-style style/input-commands-icon
                                     :color           :dark}]]])
