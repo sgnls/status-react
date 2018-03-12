@@ -9,6 +9,7 @@
             [status-im.ui.components.toolbar.view :as toolbar]
             [status-im.ui.screens.wallet.styles :as styles]
             [status-im.ui.screens.wallet.utils :as wallet.utils]
+            [status-im.ui.screens.wallet.onboarding.views :as onboarding.views]
             [status-im.utils.ethereum.core :as ethereum]
             [status-im.utils.ethereum.tokens :as tokens]
             [status-im.utils.platform :as platform]))
@@ -70,7 +71,7 @@
        :on-refresh         #(re-frame/dispatch [:update-wallet (map :symbol tokens)])
        :refreshing         (boolean (or prices-loading? balance-loading?))}]]))
 
-(defview wallet []
+(defview wallet-root []
   (letsubs [network          [:network]
             balance          [:balance]
             visible-tokens   [:wallet.settings/visible-tokens]
@@ -84,3 +85,9 @@
       [list/action-list actions
        {:container-style styles/action-section}]
       [asset-section network balance visible-tokens prices-loading? balance-loading?]]]))
+
+(defview wallet []
+  (letsubs [{:keys [wallet-set-up-passed?]} [:get-current-account]]
+    (if wallet-set-up-passed?
+      [wallet-root]
+      [onboarding.views/onboarding])))
