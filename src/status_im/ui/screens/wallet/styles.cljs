@@ -100,7 +100,8 @@
 ;; Actions section
 
 (def action-section
-  {:background-color colors/blue})
+  {:flex 1
+   :background-color colors/blue})
 
 (def action
   {:background-color colors/white-transparent

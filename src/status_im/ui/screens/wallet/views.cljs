@@ -68,9 +68,9 @@
        :data               assets
        :render-fn          render-asset}]]))
 
-(defn- refresh-control [tokens]
+(defn- refresh-control [symbols]
   (reagent/as-element
-    [react/refresh-control {:on-refresh #(re-frame/dispatch [:update-wallet (map :symbol tokens)])
+    [react/refresh-control {:on-refresh #(re-frame/dispatch [:update-wallet symbols])
                             :tint-color :white
                             :refreshing false}]))
 
@@ -79,11 +79,12 @@
                   balance          [:balance]
                   visible-tokens   [:wallet.settings/visible-tokens]
                   portfolio-value  [:portfolio-value]]
-    [react/view styles/main-section
-     [toolbar-view]
-     [react/scroll-view {:content-container-style styles/scrollable-section
-                         :refresh-control         (refresh-control visible-tokens)}
-      [total-section portfolio-value]
-      [list/action-list actions
-       {:container-style styles/action-section}]
-      [asset-section network balance visible-tokens]]]))
+    (let [symbols (map :symbol visible-tokens)]
+      [react/view styles/main-section
+       [toolbar-view]
+       [react/scroll-view {:content-container-style styles/scrollable-section
+                           :refresh-control         (refresh-control symbols)}
+        [total-section portfolio-value]
+        [list/action-list actions
+         {:container-style styles/action-section}]
+        [asset-section network balance visible-tokens]]])))
