@@ -270,8 +270,7 @@
                   :public?               true
                   :is-active             true
                   :timestamp             now
-                  :last-to-clock-value   0
-                  :last-from-clock-value 0}]
+                  :last-user->clock      {}}]
         (handlers/merge-fx cofx
                            {:db        (assoc-in db [:chats topic] chat)
                             :save-chat chat}

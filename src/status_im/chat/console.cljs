@@ -27,8 +27,7 @@
    :contacts              [{:identity         constants/console-chat-id
                             :text-color       "#FFFFFF"
                             :background-color "#AB7967"}]
-   :last-to-clock-value   0
-   :last-from-clock-value 0})
+   :user->clock {}})
 
 (def contact
   {:whisper-identity constants/console-chat-id

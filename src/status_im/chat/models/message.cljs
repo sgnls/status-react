@@ -11,6 +11,19 @@
             [status-im.transport.message.core :as transport]
             [status-im.transport.message.v1.protocol :as protocol]))
 
+(def merge-vector-clock
+  "Given two vector clocks c1 c2, merge them maintaining the maximum value
+  between if same key"
+  (partial merge-with max))
+
+(defn inc-vector-clock [pk c1]
+  (update c1 pk (fnil inc 0)))
+
+(defn diff-vector-clock
+  "Given an old and a new vector clock returns only the keys/values that have
+  change"
+  [c1 c2])
+
 (def receive-interceptors
   [(re-frame/inject-cofx :get-stored-message) (re-frame/inject-cofx :get-stored-chat)
    (re-frame/inject-cofx :random-id) re-frame/trim-v])
@@ -24,16 +37,15 @@
                                                                         contacts)]
     (:ref (get available-commands-responses response-name))))
 
-(defn- add-message
-  [chat-id {:keys [message-id from-clock-value to-clock-value] :as message} current-chat? {:keys [db]}]
+(defn add-message
+  [chat-id {:keys [from message-id user->clock] :as message} current-chat? {:keys [db]}]
   (let [prepared-message (cond-> (assoc message :appearing? true)
                            (not current-chat?)
                            (assoc :appearing? false))]
     {:db           (cond-> (-> db
-                               (update-in [:chats chat-id :messages] dissoc from-clock-value)
+                               (update-in [:chats chat-id :messages] dissoc (str from (get from user->clock)))
                                (update-in [:chats chat-id :messages] assoc message-id prepared-message)
-                               (update-in [:chats chat-id :last-from-clock-value] max from-clock-value)
-                               (update-in [:chats chat-id :last-to-clock-value] max to-clock-value))
+                               (update-in [:chats chat-id :user->last-clock] merge-vector-clock user->clock))
                      (not current-chat?)
                      (update-in [:chats chat-id :unviewed-messages] (fnil conj #{}) message-id))
      :save-message prepared-message}))
@@ -62,7 +74,7 @@
   (when send-seen?
     (transport/send (protocol/map->MessagesSeen {:message-ids #{message-id}}) chat-id cofx)))
 
-(defn- placeholder-message [chat-id from timestamp temp-id to-clock]
+(defn- placeholder-message [chat-id from timestamp temp-id user->clock]
   {:message-id       temp-id
    :outgoing         false
    :chat-id          chat-id
@@ -71,37 +83,35 @@
    :content          "Waiting for message to arrive..."
    :content-type     constants/content-type-placeholder
    :show?            true
-   :from-clock-value temp-id
-   :to-clock-value   to-clock
+   :user->clock      user->clock
    :timestamp        timestamp})
 
-(defn- add-placeholder-messages [chat-id from timestamp old-from-clock to-clock new-from-clock {:keys [db]}]
-  (when (> (- new-from-clock old-from-clock) 1)
-    {:db (reduce (fn [db temp-id]
-                   (assoc-in db [:chats chat-id :messages temp-id] (placeholder-message chat-id from timestamp temp-id to-clock)))
-                 db
-                 (range (inc old-from-clock) new-from-clock))}))
+(defn- add-placeholder-messages [chat-id from timestamp old-user->clock new-user->clock {:keys [db]}]
+  (let [from-message-id (get old-user->clock from)
+        to-message-id   (get new-user->clock from)]
+    (when (> (- to-message-id from-message-id) 1)
+      {:db (reduce (fn [db i]
+                     (let [temp-id (str from "-" i)]
+                       (assoc-in db [:chats chat-id :messages temp-id] (placeholder-message chat-id from timestamp temp-id (assoc new-user->clock from i)))))
+                   db
+                   (range (inc from-message-id) to-message-id))})))
 
-(defn- add-received-message [{:keys [from message-id chat-id content content-type timestamp to-clock-value] :as message} {:keys [db now] :as cofx}]
+(defn add-received-message [{:keys [from chat-id message-id content user->clock content-type timestamp] :as message} {:keys [db now] :as cofx}]
   (let [{:keys [current-chat-id
                 view-id
                 access-scope->commands-responses]
          :contacts/keys [contacts]}               db
         {:keys [public-key] :as current-account}  (get-current-account db)
         current-chat?                             (and (= :chat view-id) (= current-chat-id chat-id))
-        {:keys [last-from-clock-value
-                last-to-clock-value] :as chat}    (get-in db [:chats chat-id])
         command-request?                          (= content-type constants/content-type-command-request)
+        {:keys [last-user->clock] :as chat}       (get-in db [:chats chat-id])
         request-command                           (:request-command content)
-        new-from-clock-value                      (or to-clock-value (inc last-from-clock-value))
         new-timestamp                             (or timestamp now)]
     (handlers/merge-fx cofx
                        (add-message chat-id
                                     (cond-> (assoc message
                                                    :timestamp        new-timestamp
-                                                   :show?            true
-                                                   :from-clock-value new-from-clock-value
-                                                   :to-clock-value   last-to-clock-value)
+                                                   :show?            true)
                                       public-key
                                       (assoc :user-statuses {public-key (if current-chat? :seen :received)})
                                       (and request-command command-request?)
@@ -110,7 +120,7 @@
                                                                      current-account chat contacts request-command)))
                                     current-chat?)
                        (send-message-seen chat-id message-id (and public-key current-chat? (not (chat-model/bot-only-chat? db chat-id))))
-                       (add-placeholder-messages chat-id from new-timestamp last-from-clock-value last-to-clock-value new-from-clock-value))))
+                       (add-placeholder-messages chat-id from new-timestamp user->clock last-user->clock))))
 
 (defn receive
   [cofx {:keys [chat-id message-id] :as message}]
@@ -179,7 +189,7 @@
 
 (defn- send
   [chat-id send-record {{:keys [chats] :contacts/keys [contacts] :as db} :db :as cofx}]
-  (let [{:keys [dapp? fcm-token]} (get contacts chat-id)] 
+  (let [{:keys [dapp? fcm-token]} (get contacts chat-id)]
     (if dapp?
       (send-dapp-message! cofx chat-id send-record)
       (if fcm-token
@@ -201,20 +211,19 @@
     (and group-chat (not public?))
     (assoc :message-type :group-user-message)))
 
-(defn- prepare-plain-message [{:keys [identity message-text]}
-                              {:keys [chat-id last-to-clock-value last-from-clock-value] :as chat} now]
+(defn prepare-plain-message [{:keys [identity message-text]}
+                              {:keys [chat-id user->last-clock] :as chat} now]
   (add-message-type {:chat-id          chat-id
                      :content          message-text
                      :from             identity
                      :content-type     constants/text-content-type
                      :outgoing         true
                      :timestamp        now
-                     :to-clock-value   (inc last-to-clock-value)
-                     :from-clock-value last-from-clock-value
+                     :user->clock      (inc-vector-clock identity user->last-clock)
                      :show?            true}
                     chat))
 
-(def ^:private transport-keys [:content :content-type :message-type :to-clock-value :timestamp])
+(def ^:private transport-keys [:content :content-type :message-type :user->clock :timestamp])
 
 (defn- upsert-and-send [{:keys [chat-id] :as message} cofx]
   (let [send-record     (protocol/map->Message (select-keys message transport-keys))
@@ -228,7 +237,7 @@
   (upsert-and-send (prepare-plain-message params (get-in db [:chats chat-id]) now) cofx))
 
 (defn- prepare-command-message
-  [identity {:keys [last-to-clock-value last-from-clock-value chat-id] :as chat} now
+  [identity {:keys [user->last-clock chat-id] :as chat} now
    {request-params  :params
     request-command :command
     :keys           [prefill prefillBotDb]
@@ -259,8 +268,7 @@
                                                constants/content-type-command-request
                                                constants/content-type-command))
                        :outgoing         true
-                       :to-clock-value   (inc last-to-clock-value)
-                       :from-clock-value last-from-clock-value
+                       :user->last-clock   (inc-vector-clock identity user->last-clock)
                        :show?            true}
                       chat)))
 
