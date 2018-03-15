@@ -291,8 +291,7 @@
     [react/view (style/group-message-view message)
      content
      (when last-outgoing?
-       (if (or (= (keyword message-type) :group-user-message)
-               group-chat)
+       (if (= message-type :group-user-message)
          [group-message-delivery-status message]
          [message-delivery-status message]))]]])
 

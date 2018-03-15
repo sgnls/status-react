@@ -72,9 +72,9 @@
   :remove-group-chat-participants
   (fn [{{:keys [current-chat-id] :as db} :db :as cofx} [_ removed-participants]]
     (handlers/merge-fx cofx
-                       {:db (update-in db [:chats current-chat-id :contacts] remove-identities participants)
-                        :data-store/remove-members-from-chat [current-chat-id participants]
-                        :data-store/create-removing-messages (merge {:participants participants}
+                       {:db (update-in db [:chats current-chat-id :contacts] remove-identities removed-participants)
+                        :data-store/remove-members-from-chat [current-chat-id removed-participants]
+                        :data-store/create-removing-messages (merge {:participants removed-participants}
                                                                     (select-keys db [:current-chat-id :contacts/contacts]))}
                        (transport/send current-chat-id (group-chat/map->GroupAdminRemove {:removed-participants removed-participants})))))
 
