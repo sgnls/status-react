@@ -1,5 +1,4 @@
 import time
-import pytest
 from tests import info
 from views.base_element import BaseText, BaseButton, BaseEditBox
 from views.base_view import BaseView
@@ -9,7 +8,7 @@ class PublicKeyText(BaseText):
 
     def __init__(self, driver):
         super(PublicKeyText, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector('//*[contains(@text, "0x04")]')
+        self.locator = self.Locator.accessibility_id('address-text')
 
     @property
     def text(self):
@@ -55,7 +54,7 @@ class NetworkSettingsButton(BaseButton):
 
     def __init__(self, driver):
         super(NetworkSettingsButton, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector('//*[@text="Network"]')
+        self.locator = self.Locator.accessibility_id('network-button')
 
     class NetworkButton(BaseButton):
         def __init__(self, driver, network):
@@ -66,7 +65,7 @@ class NetworkSettingsButton(BaseButton):
 
         def __init__(self, driver):
             super(NetworkSettingsButton.ConnectButton, self).__init__(driver)
-            self.locator = self.Locator.xpath_selector('//*[@text="CONNECT"]')
+            self.locator = self.Locator.accessibility_id('network-connect-button')
 
 
 class LogoutButton(BaseButton):
@@ -96,29 +95,28 @@ class ShareMyContactKeyButton(BaseButton):
 
     def __init__(self, driver):
         super(ShareMyContactKeyButton, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector('//*[@text="SHARE MY CONTACT CODE"]')
+        self.locator = self.Locator.accessibility_id('share-my-contact-code-button')
 
 
 class EditButton(BaseButton):
 
     def __init__(self, driver):
         super(EditButton, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector('//*[@text="EDIT"]')
+        self.locator = self.Locator.accessibility_id('edit-button')
 
 
 class ConfirmButton(BaseButton):
 
     def __init__(self, driver):
         super(ConfirmButton, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector('(//android.view.ViewGroup[@content-desc="icon"])[1]')
+        self.locator = self.Locator.accessibility_id('done-button')
 
 
 class CrossIcon(BaseButton):
 
     def __init__(self, driver):
         super(CrossIcon, self).__init__(driver)
-        self.locator = self.Locator.xpath_selector(
-            '(// android.view.ViewGroup[@ content-desc="icon"])[1]/android.view.View')
+        self.locator = self.Locator.accessibility_id('done-button')
 
 
 class ProfileView(BaseView):
