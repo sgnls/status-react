@@ -143,9 +143,13 @@
                                (select-keys [:message-id :user-statuses])))
                          unseen-messages-ids)})
 
-(defn- send-messages-seen
+(defn- send-messages-seen [chat-id message-ids {:keys [db] :as cofx}]
+  (when (not (models/bot-only-chat? db chat-id))
+    (transport/send (protocol/map->MessagesSeen {:message-ids message-ids}) chat-id cofx)))
+
+(defn- mark-messages-seen
   [chat-id {:keys [db] :as cofx}]
-  (let [me                  (:current-chat-id db)
+  (let [me                  (:current-public-key db)
         messages-path       [:chats chat-id :messages]
         unseen-messages-ids (into #{}
                                   (comp (filter (fn [[_ {:keys [user-statuses outgoing]}]]
@@ -161,7 +165,7 @@
                                           unseen-messages-ids)
                                   (update-in [:chats chat-id :unviewed-messages] set/difference unseen-messages-ids))}
                          (persist-seen-messages chat-id unseen-messages-ids)
-                         (transport/send (protocol/map->MessagesSeen {:message-ids unseen-messages-ids}) chat-id)))))
+                         (send-messages-seen chat-id unseen-messages-ids)))))
 
 (defn- fire-off-chat-loaded-event
   [chat-id {:keys [db]}]
@@ -176,7 +180,7 @@
                      {:db (-> (assoc db :current-chat-id chat-id)
                               (models/set-chat-ui-props {:validation-messages nil}))}
                      (fire-off-chat-loaded-event chat-id)
-                     (send-messages-seen chat-id)))
+                     (mark-messages-seen chat-id)))
 
 (handlers/register-handler-fx
   :add-chat-loaded-event

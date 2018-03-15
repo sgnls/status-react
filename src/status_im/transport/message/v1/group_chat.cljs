@@ -40,8 +40,6 @@
   (send [this chat-id cofx])
   (receive [this chat-id signature cofx]))
 
-
-
 (handlers/register-handler-fx
   ::send-new-sym-key
   (fn [{:keys [db] :as cofx} [_ {:keys [chat-id message sym-key sym-key-id]}]]

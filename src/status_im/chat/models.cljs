@@ -79,3 +79,8 @@
             (assoc :delete-chat chat-id)
             (not debug?)
             (assoc :deactivate-chat chat-id))))
+
+(defn bot-only-chat? [db chat-id]
+  (let [{:keys [group-chat contacts]} (get-in db [:chats chat-id])]
+    (and (not group-chat)
+         (get-in db [:contacts/contacts (:identity (first contacts)) :dapp?]))))

@@ -109,7 +109,7 @@
                                                 (lookup-response-ref access-scope->commands-responses
                                                                      current-account chat contacts request-command)))
                                     current-chat?)
-                       (send-message-seen chat-id message-id (and public-key current-chat?))
+                       (send-message-seen chat-id message-id (and public-key current-chat? (not (chat-model/bot-only-chat? db chat-id))))
                        (add-placeholder-messages chat-id from new-timestamp last-from-clock-value last-to-clock-value new-from-clock-value))))
 
 (defn receive
@@ -179,7 +179,7 @@
 
 (defn- send
   [chat-id send-record {{:keys [chats] :contacts/keys [contacts] :as db} :db :as cofx}]
-  (let [{:keys [dapp? fcm-token]} (get contacts chat-id)]
+  (let [{:keys [dapp? fcm-token]} (get contacts chat-id)] 
     (if dapp?
       (send-dapp-message! cofx chat-id send-record)
       (if fcm-token
