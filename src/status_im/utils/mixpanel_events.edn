@@ -1,0 +1,5 @@
+;; This file is supposed to be edited by Chad.
+;; Chad loves mixpanel. When Chad was a child he dreamed of being a mixpanel tamer.
+
+[{:label     "Navigate to tab"
+  :trigger   [:navigate-to-tab]}]

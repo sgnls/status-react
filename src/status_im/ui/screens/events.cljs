@@ -39,7 +39,9 @@
             [status-im.utils.crypt :as crypt]
             [status-im.utils.notifications :as notifications]
             [status-im.utils.handlers :as handlers]
+            [status-im.utils.http :as http]
             [status-im.utils.instabug :as inst]
+            [status-im.utils.mixpanel :as mixpanel]
             [status-im.utils.platform :as platform]
             [status-im.utils.types :as types]
             [status-im.utils.utils :as utils]
@@ -113,14 +115,14 @@
     (let [on-success #(re-frame/dispatch (success-event-creator %))
           on-error   #(re-frame/dispatch (failure-event-creator %))
           opts       {:timeout-ms timeout-ms}]
-      (utils/http-post action data on-success on-error opts))))
+      (http/post action data on-success on-error opts))))
 
 (defn- http-get [{:keys [url response-validator success-event-creator failure-event-creator timeout-ms]}]
   (let [on-success #(re-frame/dispatch (success-event-creator %))
         on-error   #(re-frame/dispatch (failure-event-creator %))
         opts       {:valid-response? response-validator
                     :timeout-ms      timeout-ms}]
-    (utils/http-get url on-success on-error opts)))
+    (http/get url on-success on-error opts)))
 
 (re-frame/reg-fx
   :http-get
@@ -204,7 +206,6 @@
   :close-application
   (fn [] (status/close-application)))
 
-
 ;;;; Handlers
 
 (handlers/register-handler-db
@@ -220,13 +221,13 @@
 (handlers/register-handler-fx
   :initialize-app
   (fn [_ _]
-    {::testfairy-alert nil
-     :dispatch-n       [[:initialize-db]
-                        [:load-accounts]
-                        [:initialize-views]
-                        [:listen-to-network-status]
-                        [:initialize-crypt]
-                        [:initialize-geth]]}))
+    {::testfairy-alert            nil
+     :dispatch-n                  [[:initialize-db]
+                                   [:load-accounts]
+                                   [:initialize-views]
+                                   [:listen-to-network-status]
+                                   [:initialize-crypt]
+                                   [:initialize-geth]]}))
 
 (handlers/register-handler-fx
   :initialize-db
@@ -250,8 +251,7 @@
                status-module-initialized? status-node-started?
                inbox/wnode]
         :or [network (get app-db :network)
-             wnode   (get app-db :inbox/wnode)]
-        :as db} [_ address]]
+             wnode   (get app-db :inbox/wnode)]} [_ address]]
     (let [console-contact (get contacts console-chat-id)]
       (cond-> (assoc app-db
                      :access-scope->commands-responses access-scope->commands-responses
@@ -275,7 +275,7 @@
 
 (handlers/register-handler-fx
   :initialize-account
-  (fn [_ [_ address events-after]]
+  (fn [{{:keys [accounts/accounts]} :db} [_ address events-after]]
     {:dispatch-n (cond-> [[:initialize-account-db address]
                           [:load-processed-messages]
                           [:initialize-protocol address]
@@ -289,7 +289,8 @@
                           [:update-wallet]
                           [:update-transactions]
                           [:get-fcm-token]
-                          [:update-sign-in-time]]
+                          [:update-sign-in-time]
+                          (when (:sharing-usage-data? (accounts address)) [:register-mixpanel-tracking address])]
                    (seq events-after) (into events-after))}))
 
 (handlers/register-handler-fx
@@ -331,6 +332,22 @@
   :get-fcm-token
   (fn [_ _]
     {::get-fcm-token-fx nil}))
+
+(defn- track [id event]
+  (when-let [{:keys [label]} (mixpanel/matching-event event)]
+    (mixpanel/track id label)))
+
+(def hook-id :mixpanel-callback)
+
+(handlers/register-handler-fx
+  :register-mixpanel-tracking
+  (fn [_ [_ id]]
+    (re-frame/add-post-event-callback hook-id #(track id %))))
+
+(handlers/register-handler-fx
+  :unregister-mixpanel-tracking
+  (fn []
+    (re-frame/remove-post-event-callback hook-id)))
 
 ;; Because we send command to jail in params and command `:ref` is a lookup vector with
 ;; keyword in it (for example `["transactor" :command 51 "send"]`), we lose that keyword
