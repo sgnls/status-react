@@ -5,43 +5,51 @@
             [status-im.ui.screens.browser.styles :as styles]
             [status-im.ui.components.status-bar.view :as status-bar]
             [status-im.ui.components.toolbar.view :as toolbar.view]
-            [status-im.chat.views.toolbar-content :as toolbar-content]
             [status-im.ui.components.webview-bridge :as components.webview-bridge]
             [status-im.utils.js-resources :as js-res]
             [status-im.ui.components.react :as components]
             [reagent.core :as reagent]
             [status-im.ui.components.chat-icon.screen :as chat-icon.screen]
             [status-im.ui.components.icons.vector-icons :as vector-icons]
-            [status-im.i18n :as i18n]))
+            [status-im.i18n :as i18n]
+            [status-im.ui.components.common.common :as components.common]))
 
-(views/defview toolbar-content-dapp [contact-identity]
+(views/defview toolbar-content-dapp [contact-identity unread-messages-number]
   (views/letsubs [contact [:contact-by-identity contact-identity]]
-    [react/view styles/toolbar-content-dapp
-     [chat-icon.screen/dapp-icon-browser contact 36]
-     [react/view styles/dapp-name
-      [react/text {:style               styles/dapp-name-text
-                   :number-of-lines     1
-                   :font                :toolbar-title
-                   :accessibility-label :dapp-name-text}
-       (:name contact)]
-      [react/text {:style styles/dapp-text}
-       (i18n/label :t/dapp)]]]))
+    [react/view
+     [react/view styles/toolbar-content-dapp
+      [chat-icon.screen/dapp-icon-browser contact 36]
+      [react/view styles/dapp-name
+       [react/text {:style               styles/dapp-name-text
+                    :number-of-lines     1
+                    :font                :toolbar-title
+                    :accessibility-label :dapp-name-text}
+        (:name contact)]
+       [react/text {:style styles/dapp-text}
+        (i18n/label :t/dapp)]]]
+     (when (pos? unread-messages-number)
+       [react/view styles/toolbar-content-dapp-counter
+         [components.common/counter unread-messages-number]])]))
 
-(defn toolbar-content [{:keys [url] :as browser}]
+(defn toolbar-content [{:keys [url] :as browser} unread-messages-number]
   (let [url-text (atom nil)]
-    [react/view (styles/toolbar-content false)
-     [react/text-input {:on-change-text    #(reset! url-text %)
-                        :on-submit-editing #(re-frame/dispatch [:update-browser (assoc browser :url @url-text)])
-                        :auto-focus        (not url)
-                        :placeholder       (i18n/label :t/enter-url)
-                        :auto-capitalize   :none
-                        :auto-correct      false
-                        :default-value     url
-                        :style             styles/url-input}]
-     ;;TODO .reload doesn't work, implement later
-     #_[react/touchable-highlight {:on-press #(when @webview (.reload @webview))}
-        [react/view
-         [vector-icons/icon :icons/refresh]]]]))
+    [react/view
+     [react/view (styles/toolbar-content false)
+      [react/text-input {:on-change-text    #(reset! url-text %)
+                         :on-submit-editing #(re-frame/dispatch [:update-browser (assoc browser :url @url-text)])
+                         :auto-focus        (not url)
+                         :placeholder       (i18n/label :t/enter-url)
+                         :auto-capitalize   :none
+                         :auto-correct      false
+                         :default-value     url
+                         :style             styles/url-input}]
+      ;;TODO .reload doesn't work, implement later
+      #_[react/touchable-highlight {:on-press #(when @webview (.reload @webview))}
+         [react/view
+          [vector-icons/icon :icons/refresh]]]]
+     (when (pos? unread-messages-number)
+       [react/view styles/toolbar-content-counter
+        [components.common/counter unread-messages-number]])]))
 
 (defn web-view-error []
   (reagent/as-element
@@ -64,14 +72,15 @@
                   {:keys [dapp? contact url] :as browser} [:get-current-browser]
                   {:keys [can-go-back? can-go-forward?]} [:get :browser/options]
                   extra-js [:web-view-extra-js]
-                  rpc-url [:get :rpc-url]]
+                  rpc-url [:get :rpc-url]
+                  unread-messages-number [:get-chats-unread-messages-number]]
     [react/keyboard-avoiding-view styles/browser
      [status-bar/status-bar]
      [toolbar.view/toolbar {}
       toolbar.view/default-nav-back
       (if dapp?
-        [toolbar-content-dapp contact]
-        [toolbar-content browser])]
+        [toolbar-content-dapp contact unread-messages-number]
+        [toolbar-content browser unread-messages-number])]
      (if url
        [components.webview-bridge/webview-bridge
         {:ref                                   #(reset! webview %)

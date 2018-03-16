@@ -219,3 +219,9 @@
    :font-size      14
    :line-height    20
    :letter-spacing -0.2})
+
+(defstyle counter-container
+  {:position :absolute
+   :left     -6
+   :android  {:top 14}
+   :ios      {:top 11}})
