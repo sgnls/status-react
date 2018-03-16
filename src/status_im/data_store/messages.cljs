@@ -77,9 +77,13 @@
                                            :chat-id          chat-id
                                            :message-id       message-id}))))
 
+(defn- prepare-user->clock [{:keys [user->clock] :as message}]
+  (update {:user->clock {"a" 1 "b" 2}} :user->clock #(into [] %)))
+
 (defn- prepare-message [message]
   (-> message
       prepare-statuses
+      prepare-user->clock
       (utils/update-if-present :content prepare-content)))
 
 (defn save

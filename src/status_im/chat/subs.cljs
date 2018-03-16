@@ -3,6 +3,7 @@
             [re-frame.core :refer [reg-sub subscribe]]
             [status-im.constants :as constants]
             [status-im.chat.constants :as chat-constants]
+            [status-im.utils.clocks :as utils.clocks]
             [status-im.chat.models.input :as input-model]
             [status-im.chat.models.commands :as commands-model]
             [status-im.chat.views.input.utils :as input-utils]
@@ -92,9 +93,8 @@
   "Transforms map of messages into sequence of `[datemark messages]` tuples, where
   messages with particular datemark are sorted according to their `:clock-values` and
   tuples themeselves are sorted according to the highest `:clock-values` in the messages."
-  [id->messages chat-member-pks]
-  (let [clock-sorter (fn [clocks] (mapv #(get clocks %) chat-member-pks))
-        datemark->messages (transduce (comp (map second)
+  [id->messages]
+  (let [datemark->messages (transduce (comp (map second)
                                             (filter :show?)
                                             (map (fn [{:keys [timestamp] :as msg}]
                                                    (assoc msg :datemark (time/day-relative timestamp)))))
@@ -104,16 +104,16 @@
                                       id->messages)]
     (->> datemark->messages
          (map (fn [[datemark messages]]
-                [datemark (->> messages (sort-by (comp clock-sorter :user->clock)) reverse)]))
-         (sort-by (comp clock-sorter :user->clock first second))
+                [datemark (->> messages (sort-by :user->clock utils.clocks/sort) reverse)]))
+         (sort-by (comp :user->clock first second) utils.clocks/sort)
          reverse)))
 
 (reg-sub
  :get-chat-message-datemark-groups
  (fn [[_ chat-id]]
    (subscribe [:get-chat chat-id]))
- (fn [{:keys [messages]}]
-   (message-datemark-groups messages)))
+ (fn [{:keys [messages last-user->clock]}]
+   (message-datemark-groups messages (sort (keys last-user->clock)))))
 
 (defn messages-stream
   "Transforms message-datemark-groups into flat sequence of messages interspersed with
@@ -151,8 +151,8 @@
 (reg-sub
  :get-current-chat-messages
  :<- [:get-current-chat]
- (fn [{:keys [messages]}]
-   (-> messages message-datemark-groups messages-stream)))
+ (fn [{:keys [messages last-user->clock]}]
+   (-> messages (message-datemark-groups (sort (keys last-user->clock))) messages-stream)))
 
 (reg-sub
  :get-commands-for-chat

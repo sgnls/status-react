@@ -11,11 +11,18 @@
   []
   (realm/js-object->clj (get-all)))
 
+(defn- ->user-statuses [user-statuses]
+  (into {}
+        (map (fn [[_ {:keys [whisper-identity status]}]]
+               [whisper-identity (keyword status)]) user-statuses)))
+
+(defn- ->user->clock [user->clock]
+  (into {} user->clock))
+
 (defn- transform-message [message]
-  (update message :user-statuses
-          (partial into {}
-                   (map (fn [[_ {:keys [whisper-identity status]}]]
-                          [whisper-identity (keyword status)])))))
+  (-> message
+    (update :user-statuses ->user-statuses)
+    (update :user->clock ->user->clock)))
 
 (defn get-by-id
   [message-id]

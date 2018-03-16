@@ -5,24 +5,11 @@
             [status-im.chat.events.requests :as requests-events]
             [status-im.chat.models :as chat-model]
             [status-im.chat.models.commands :as commands-model]
-            [status-im.utils.clocks :as clocks-utils]
+            [status-im.utils.clocks :as utils.clocks]
             [status-im.utils.handlers :as handlers]
             [status-im.transport.utils :as transport.utils]
             [status-im.transport.message.core :as transport]
             [status-im.transport.message.v1.protocol :as protocol]))
-
-(def merge-vector-clock
-  "Given two vector clocks c1 c2, merge them maintaining the maximum value
-  between if same key"
-  (partial merge-with max))
-
-(defn inc-vector-clock [pk c1]
-  (update c1 pk (fnil inc 0)))
-
-(defn diff-vector-clock
-  "Given an old and a new vector clock returns only the keys/values that have
-  change"
-  [c1 c2])
 
 (def receive-interceptors
   [(re-frame/inject-cofx :get-stored-message) (re-frame/inject-cofx :get-stored-chat)
@@ -45,7 +32,7 @@
     {:db           (cond-> (-> db
                                (update-in [:chats chat-id :messages] dissoc (str from (get from user->clock)))
                                (update-in [:chats chat-id :messages] assoc message-id prepared-message)
-                               (update-in [:chats chat-id :user->last-clock] merge-vector-clock user->clock))
+                               (update-in [:chats chat-id :user->last-clock] utils.clocks/merge user->clock))
                      (not current-chat?)
                      (update-in [:chats chat-id :unviewed-messages] (fnil conj #{}) message-id))
      :save-message prepared-message}))
@@ -219,7 +206,7 @@
                      :content-type     constants/text-content-type
                      :outgoing         true
                      :timestamp        now
-                     :user->clock      (inc-vector-clock identity user->last-clock)
+                     :user->clock      (utils.clocks/inc identity user->last-clock)
                      :show?            true}
                     chat))
 
@@ -268,7 +255,7 @@
                                                constants/content-type-command-request
                                                constants/content-type-command))
                        :outgoing         true
-                       :user->last-clock   (inc-vector-clock identity user->last-clock)
+                       :user->last-clock   (utils.clocks/inc identity user->last-clock)
                        :show?            true}
                       chat)))
 

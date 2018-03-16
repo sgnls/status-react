@@ -1,32 +1,28 @@
-(ns status-im.utils.clocks)
+(ns status-im.utils.clocks
+  (:refer-clojure :exclude [merge inc sort])
+  (:require [clojure.data :as data]))
 
-;; We use Lamport clocks to ensure correct ordering of events in chats. This is
-;; necessary because we operate in a distributed system and there is no central
-;; coordinator for what happened before what.
-;;
-;; For example, the last received message in a group chat will appear last,
-;; regardless if that person has seen all the previous group chat messages. The
-;; principal invariant to maintain is that clock-values should be monotonically
-;; increasing.
-;;
-;; All clock updates happens as part of sending or receiving a message. Here's
-;; the basic algorithm:
-;;
-;; Sending messages:
-;; time = time+1;
-;; time_stamp = time;
-;; send(message, time_stamp);
-;;
-;; Receiving messages:
-;; (message, time_stamp) = receive();
-;; time = max(time_stamp, time)+1;
-;;
-;; Details:
-;; https://en.wikipedia.org/wiki/Lamport_timestamps
-;; http://amturing.acm.org/p558-lamport.pdf
+(defn diff
+  "Given an old and a new vector clock returns only the keys/values that have
+  changed"
+  [old-clock new-clock]
+  (second (data/diff old-clock new-clock)))
 
-(defn send [local-clock]
-  (inc (or local-clock 0)))
+(def merge
+  "Given two vector clocks c1 c2, merge them maintaining the maximum value
+  between if same key"
+  (partial merge-with max))
 
-(defn receive [message-clock local-clock]
-  (inc (max (or message-clock 0) (or local-clock 0))))
+(defn inc [pk c1]
+  (update c1 pk (fnil clojure.core/inc 0)))
+
+(defn sort
+  "Given a list of vector clocks returns them sorted by the following rules:
+  If every value in A is >= then B then A > B
+  Concurrent clocks will be sorted by trying to preserve casual ordering, breaking
+  ties by public key of from"
+  [pks c1 c2]
+  (let [v1 (mapv #(get c1 % 0) pks)
+        v2 (mapv #(get c2 % 0) pks)]
+    (compare v1 v2)))
+
