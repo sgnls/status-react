@@ -1,6 +1,5 @@
 (ns status-im.ui.screens.accounts.events
-  (:require [status-im.data-store.accounts :as accounts-store]
-            [re-frame.core :as re-frame]
+  (:require [re-frame.core :as re-frame]
             [taoensso.timbre :as log]
             [status-im.native-module.core :as status]
             [status-im.utils.types :refer [json->clj]]
@@ -24,11 +23,6 @@
     {:public "public" :private "private"}))
 
 (re-frame/reg-cofx
-  ::get-all-accounts
-  (fn [coeffects _]
-    (assoc coeffects :all-accounts (accounts-store/get-all))))
-
-(re-frame/reg-cofx
   ::get-signing-phrase
   (fn [coeffects _]
     (assoc coeffects :signing-phrase (signing-phrase/generate))))
@@ -39,11 +33,6 @@
     (assoc coeffects :status (rand-nth statuses/data))))
 
 ;;;; FX
-
-(re-frame/reg-fx
-  ::save-account
-  (fn [account]
-    (accounts-store/save account true)))
 
 (re-frame/reg-fx
   ::create-account
@@ -95,8 +84,8 @@
                                 :networks networks
                                 :wnode    wnode
                                 :address  address)]
-    {:db            (assoc-in db [:accounts/accounts address] enriched-account)
-     ::save-account enriched-account}))
+    {:db           (assoc-in db [:accounts/accounts address] enriched-account)
+     :save-account enriched-account}))
 
 ;; TODO(janherich) we have this handler here only because of the tests, refactor/improve tests ASAP
 (handlers/register-handler-fx
@@ -126,7 +115,7 @@
 
 (handlers/register-handler-fx
   :load-accounts
-  [(re-frame/inject-cofx ::get-all-accounts)]
+  [(re-frame/inject-cofx :get-all-accounts)]
   (fn [{:keys [db all-accounts]} _]
     (let [accounts (->> all-accounts
                         (map (fn [{:keys [address] :as account}]
@@ -144,14 +133,14 @@
   (fn [{{:accounts/keys [accounts] :networks/keys [networks] :as db} :db} [_ id]]
     (let [current-account (get accounts id)
           new-account (assoc current-account :networks networks)]
-      {:db            (assoc-in db [:accounts/accounts id] new-account)
-       ::save-account new-account})))
+      {:db           (assoc-in db [:accounts/accounts id] new-account)
+       :save-account new-account})))
 
 (defn update-wallet-settings [{:accounts/keys [current-account-id accounts] :as db} settings]
   (let [new-account (-> (get accounts current-account-id)
                         (assoc :settings settings))]
-    {:db            (assoc-in db [:accounts/accounts current-account-id] new-account)
-     ::save-account new-account}))
+    {:db           (assoc-in db [:accounts/accounts current-account-id] new-account)
+     :save-account new-account}))
 
 (defn account-update
   "Takes effects (containing :db) + new account fields, adds all effects necessary for account update."
@@ -160,7 +149,7 @@
         new-account     (merge current-account new-account-fields)]
     (-> fx
         (assoc-in [:db :accounts/accounts current-account-id] new-account)
-        (assoc ::save-account new-account
+        (assoc :save-account new-account
                ::broadcast-account-update (merge (select-keys db [:current-public-key :web3])
                                                  (select-keys new-account [:name :photo-path :status
                                                                            :updates-public-key :updates-private-key]))))))
@@ -176,7 +165,7 @@
                                                   :updates-private-key private
                                                   :last-updated        now})]
       {:db                (assoc-in db [:accounts/accounts current-account-id] new-account)
-       ::save-account     new-account
+       :save-account      new-account
        ::send-keys-update (merge
                            (select-keys db [:web3 :current-public-key :contacts])
                            (select-keys new-account [:updates-public-key
